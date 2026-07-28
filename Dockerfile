@@ -2,17 +2,15 @@ FROM php:8.4-apache
 
 WORKDIR /var/www/html
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     curl \
+    zip \
     libpng-dev \
     libonig-dev \
-    libxml2-dev \
-    zip
+    libxml2-dev
 
-# Install PHP extensions
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
@@ -22,22 +20,26 @@ RUN docker-php-ext-install \
     bcmath \
     gd
 
-# Enable Apache rewrite
 RUN a2enmod rewrite
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y nodejs
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy project
 COPY . .
 
-# Install Laravel dependencies
+# PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Permissions
+# Node dependencies + Vite build
+RUN npm install
+RUN npm run build
+
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Laravel public folder
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
 EXPOSE 80
